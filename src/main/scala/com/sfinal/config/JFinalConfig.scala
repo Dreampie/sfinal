@@ -12,22 +12,22 @@ trait JFinalConfig {
   /**
    * Config route
    */
-  def configRoute(me: Routes)
+  def configRoute(routes: Routes)
 
   /**
    * Config plugin
    */
-  def configPlugin(me: Plugins)
+  def configPlugin(plugins: Plugins)
 
   /**
    * Config interceptor applied to all actions.
    */
-  def configInterceptor(me: Interceptors)
+  def configInterceptor(interceptors: Interceptors)
 
   /**
    * Config handler
    */
-  def configHandler(me: Handlers)
+  def configHandler(handlers: Handlers)
 
   /**
    * Call back after JFinal start
