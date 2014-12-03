@@ -3,7 +3,7 @@ package com.sfinal.config
 /**
  * Created by wangrenhui on 14/12/3.
  */
-trait JFinalConfig {
+trait SFConfig {
   /**
    * Config constant
    */
@@ -33,11 +33,11 @@ trait JFinalConfig {
    * Call back after JFinal start
    */
   def afterJFinalStart {
-  };
+  }
 
   /**
    * Call back before JFinal stop
    */
   def beforeJFinalStop {
-  };
+  }
 }
