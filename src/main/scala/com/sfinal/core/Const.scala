@@ -2,7 +2,8 @@ package com.sfinal.core
 
 import java.io.File
 
-import com.jfinal.render.ViewType
+import com.sfinal.render.ViewType
+import com.sfinal.render.ViewType.ViewType
 
 /**
  * Created by wangrenhui on 14/12/2.
