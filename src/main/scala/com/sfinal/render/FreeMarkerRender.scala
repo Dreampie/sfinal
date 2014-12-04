@@ -1,34 +1,53 @@
+/**
+ * Copyright (c) 2011-2015, James Zhan 詹波 (jfinal@126.com).
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.sfinal.render
 
-import java.io.{IOException, PrintWriter}
-import java.util
-import java.util.{Locale, Properties}
+import java.io.PrintWriter
+import java.util.Enumeration
+import java.util.HashMap
+import java.util.Locale
+import java.util.Map
+import java.util.Properties
 import javax.servlet.ServletContext
-
-import freemarker.template._
-
-import scala.collection.immutable.HashMap
+import com.sfinal.render.{RenderException, Render}
+import freemarker.template.Configuration
+import freemarker.template.ObjectWrapper
+import freemarker.template.Template
+import freemarker.template.TemplateException
+import freemarker.template.TemplateExceptionHandler
 
 /**
- * Created by ice on 14-12-3.
+ * FreeMarkerRender.
  */
-class FreeMarkerRender extends Render {
-
-
-  def this(view: String) {
-    this()
-    this.view = view
+object FreeMarkerRender {
+  /**
+   * freemarker can not load freemarker.properies automatically
+   */
+  def getConfiguration: Configuration = {
+    return config
   }
-
 
   /**
    * Set freemarker's property.
    * The value of template_update_delay is 5 seconds.
    * Example: FreeMarkerRender.setProperty("template_update_delay", "1600");
    */
-  def property_=(propertyName: String, propertyValue: String) {
+  def setProperty(propertyName: String, propertyValue: String) {
     try {
-      FreeMarkerRender.configuration.setSetting(propertyName, propertyValue)
+      FreeMarkerRender.getConfiguration.setSetting(propertyName, propertyValue)
     }
     catch {
       case e: TemplateException => {
@@ -37,9 +56,9 @@ class FreeMarkerRender extends Render {
     }
   }
 
-  def properties_=(properties: Properties) {
+  def setProperties(properties: Properties) {
     try {
-      FreeMarkerRender.configuration.setSettings(properties)
+      FreeMarkerRender.getConfiguration.setSettings(properties)
     }
     catch {
       case e: TemplateException => {
@@ -48,48 +67,9 @@ class FreeMarkerRender extends Render {
     }
   }
 
-
-  def render {
-    response.setContentType(FreeMarkerRender.contentType)
-    var root: Map[String, Object] = HashMap[String, Object]()
-    val attrs: util.Enumeration[_] = request.getAttributeNames
-    while (attrs.hasMoreElements) {
-      val attrName: String = attrs.nextElement.toString
-      root += ((attrName, request.getAttribute(attrName)))
-    }
-
-    var writer: PrintWriter = null
-    try {
-      val template: Template = FreeMarkerRender.configuration.getTemplate(view)
-      writer = response.getWriter
-      template.process(root, writer)
-    }
-    catch {
-      case e: IOException => {
-        throw new RuntimeException(e)
-      }
-    } finally {
-      if (writer != null) writer.close
-    }
-  }
-}
-
-object FreeMarkerRender {
-  private val encoding: String = Render.encoding
-  private val contentType: String = "text/html; charset=" + encoding
-  private val config: Configuration = new Configuration
-
-
-  /**
-   * freemarker can not load freemarker.properies automatically
-   */
-  def configuration: Configuration = {
-    config
-  }
-
-  def init(servletContext: ServletContext, locale: Locale, template_update_delay: Int) {
+  private[render] def init(servletContext: ServletContext, locale: Locale, template_update_delay: Int) {
     config.setServletContextForTemplateLoading(servletContext, "/")
-    if (Render.devMode) {
+    if (getDevMode) {
       config.setTemplateUpdateDelay(0)
     }
     else {
@@ -106,4 +86,43 @@ object FreeMarkerRender {
     config.setTimeFormat("HH:mm:ss")
     config.setDateTimeFormat("yyyy-MM-dd HH:mm:ss")
   }
+
+  private final val encoding: String = getEncoding
+  private final val contentType: String = "text/html; charset=" + encoding
+  private final val config: Configuration = new Configuration
 }
+
+class FreeMarkerRender extends Render {
+  def this(view: String) {
+    this()
+    this.view = view
+  }
+
+  @SuppressWarnings(Array("unchecked", "rawtypes")) def render {
+    response.setContentType(contentType)
+    val root: Map[_, _] = new HashMap[_, _]
+    {
+      val attrs: Enumeration[String] = request.getAttributeNames
+      while (attrs.hasMoreElements) {
+        val attrName: String = attrs.nextElement
+        root.put(attrName, request.getAttribute(attrName))
+      }
+    }
+    var writer: PrintWriter = null
+    try {
+      val template: Template = config.getTemplate(view)
+      writer = response.getWriter
+      template.process(root, writer)
+    }
+    catch {
+      case e: Exception => {
+        throw new RenderException(e)
+      }
+    }
+    finally {
+      if (writer != null) writer.close
+    }
+  }
+}
+
+

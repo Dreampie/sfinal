@@ -7,25 +7,25 @@ import org.slf4j
  */
 class Slf4jLoggerProvider extends LoggerProvider {
   def logger(clazz: Class[_]): Logger = {
-    new Slf4jLogger(clazz)
+    Slf4jLogger.logger(clazz)
   }
 
   def logger(name: String): Logger = {
-    new Slf4jLogger(name)
+    Slf4jLogger.logger(name)
   }
 }
 
-class Slf4jLogger private extends Logger {
+object Slf4jLogger extends Logger {
   private var log: slf4j.Logger = null
 
-  def this(clazz: Class[_]) {
-    this()
+  def logger(clazz: Class[_]): Logger = {
     log = slf4j.LoggerFactory.getLogger(clazz)
+    this
   }
 
-  def this(name: String) {
-    this()
+  def logger(name: String): Logger = {
     log = slf4j.LoggerFactory.getLogger(name)
+    this
   }
 
   def info(message: String) {
@@ -69,22 +69,22 @@ class Slf4jLogger private extends Logger {
   }
 
   def isDebugEnabled: Boolean = {
-    return log.isDebugEnabled
+    log.isDebugEnabled
   }
 
   def isInfoEnabled: Boolean = {
-    return log.isInfoEnabled
+    log.isInfoEnabled
   }
 
   def isWarnEnabled: Boolean = {
-    return log.isWarnEnabled
+    log.isWarnEnabled
   }
 
   def isErrorEnabled: Boolean = {
-    return log.isErrorEnabled
+    log.isErrorEnabled
   }
 
   def isFatalEnabled: Boolean = {
-    return log.isErrorEnabled
+    log.isErrorEnabled
   }
 }

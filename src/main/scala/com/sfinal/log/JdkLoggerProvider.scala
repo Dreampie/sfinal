@@ -8,28 +8,28 @@ import java.util.logging.Level
  */
 class JdkLoggerProvider extends LoggerProvider {
   def logger(clazz: Class[_]): Logger = {
-    new JdkLogger(clazz)
+    JdkLogger.logger(clazz)
   }
 
   def logger(name: String): Logger = {
-    new JdkLogger(name)
+    JdkLogger.logger(name)
   }
 }
 
-class JdkLogger private extends Logger {
+object JdkLogger extends Logger {
   private var log: logging.Logger = null
   private var clazzName: String = null
 
-  def this(clazz: Class[_]) {
-    this()
+  def logger(clazz: Class[_]): Logger = {
     clazzName = clazz.getName
     log = logging.Logger.getLogger(clazzName)
+    this
   }
 
-  def this(name: String) {
-    this()
+  def logger(name: String): Logger = {
     clazzName = name
     log = logging.Logger.getLogger(clazzName)
+    this
   }
 
   def debug(message: String) {
@@ -79,23 +79,23 @@ class JdkLogger private extends Logger {
   }
 
   def isDebugEnabled: Boolean = {
-    return log.isLoggable(Level.FINE)
+    log.isLoggable(Level.FINE)
   }
 
   def isInfoEnabled: Boolean = {
-    return log.isLoggable(Level.INFO)
+    log.isLoggable(Level.INFO)
   }
 
   def isWarnEnabled: Boolean = {
-    return log.isLoggable(Level.WARNING)
+    log.isLoggable(Level.WARNING)
   }
 
   def isErrorEnabled: Boolean = {
-    return log.isLoggable(Level.SEVERE)
+    log.isLoggable(Level.SEVERE)
   }
 
   def isFatalEnabled: Boolean = {
-    return log.isLoggable(Level.SEVERE)
+    log.isLoggable(Level.SEVERE)
   }
 }
 

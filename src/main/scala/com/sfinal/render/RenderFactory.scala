@@ -1,54 +1,110 @@
+/**
+ * Copyright (c) 2011-2015, James Zhan 詹波 (jfinal@126.com).
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.sfinal.render
 
+import java.io.File
 import java.util.Locale
 import javax.servlet.ServletContext
-
 import com.sfinal.config.Constants
-import com.sfinal.render.ViewType.ViewType
+import com.sfinal.kit.PathKit
+import com.sfinal.core.Const._
+import com.sfinal.render.{XmlRender, TextRender, ViewType, VelocityRender}
 
 /**
- * Created by ice on 14-12-3.
+ * RenderFactory.
  */
 object RenderFactory {
-  private var constants: Constants = null
-  private var mainRenderFactoryPrivate: IMainRenderFactory = null
-  private var errorRenderFactoryPrivate: IErrorRenderFactory = null
-  private var servletContextPrivate: ServletContext = null
-
-  private def servletContext: ServletContext = {
-    servletContextPrivate
+  private[render] def getServletContext: ServletContext = {
+    return servletContext
   }
 
-  def mainRenderFactory: IMainRenderFactory = {
-    mainRenderFactoryPrivate
+  def me: RenderFactory = {
+    return me
   }
 
-  def mainRenderFactory_=(mainRenderFactory: IMainRenderFactory) {
-    if (mainRenderFactory != null) mainRenderFactoryPrivate = mainRenderFactory
+  def setMainRenderFactory(mainRenderFactory: IMainRenderFactory) {
+    if (mainRenderFactory != null) RenderFactory.mainRenderFactory = mainRenderFactory
   }
 
-  def errorRenderFactory: IErrorRenderFactory = {
-    errorRenderFactoryPrivate
+  def setErrorRenderFactory(errorRenderFactory: IErrorRenderFactory) {
+    if (errorRenderFactory != null) RenderFactory.errorRenderFactory = errorRenderFactory
   }
 
-  def errorRenderFactory_=(errorRenderFactory: IErrorRenderFactory) {
-    if (errorRenderFactory != null) errorRenderFactoryPrivate = errorRenderFactory
+  private var mainRenderFactory: IMainRenderFactory = null
+  private var errorRenderFactory: IErrorRenderFactory = null
+  private var servletContext: ServletContext = null
+  private final val me: RenderFactory = new RenderFactory
+
+  private final class FreeMarkerRenderFactory extends IMainRenderFactory {
+    def getRender(view: String): Render = {
+      return new FreeMarkerRender(view)
+    }
+
+    def getViewExtension: String = {
+      return ".html"
+    }
+  }
+
+  private final class JspRenderFactory extends IMainRenderFactory {
+    def getRender(view: String): Render = {
+      return new JspRender(view)
+    }
+
+    def getViewExtension: String = {
+      return ".jsp"
+    }
+  }
+
+  private final class VelocityRenderFactory extends IMainRenderFactory {
+    def getRender(view: String): Render = {
+      return new VelocityRender(view)
+    }
+
+    def getViewExtension: String = {
+      return ".html"
+    }
+  }
+
+  private final class ErrorRenderFactory extends IErrorRenderFactory {
+    def getRender(errorCode: Int, view: String): Render = {
+      return new ErrorRender(errorCode, view)
+    }
+  }
+
+}
+
+class RenderFactory {
+  private def this() {
+    this()
   }
 
   def init(constants: Constants, servletContext: ServletContext) {
     this.constants = constants
-    this.servletContextPrivate = servletContext
-    Render.init(constants.encoding, constants.devMode)
+    RenderFactory.servletContext = servletContext
+    Render.init(constants.getEncoding, constants.getDevMode)
     initFreeMarkerRender(servletContext)
     initVelocityRender(servletContext)
     initJspRender(servletContext)
     initFileRender(servletContext)
     if (mainRenderFactory == null) {
-      val defaultViewType: ViewType = constants.viewType
+      val defaultViewType: ViewType = constants.getViewType
       if (defaultViewType eq ViewType.FREE_MARKER) mainRenderFactory = new RenderFactory.FreeMarkerRenderFactory
       else if (defaultViewType eq ViewType.JSP) mainRenderFactory = new RenderFactory.JspRenderFactory
       else if (defaultViewType eq ViewType.VELOCITY) mainRenderFactory = new RenderFactory.VelocityRenderFactory
-      else throw new Nothing("View Type can not be null.")
+      else throw new RuntimeException("View Type can not be null.")
     }
     if (errorRenderFactory == null) {
       errorRenderFactory = new RenderFactory.ErrorRenderFactory
@@ -58,10 +114,10 @@ object RenderFactory {
   private def initFreeMarkerRender(servletContext: ServletContext) {
     try {
       Class.forName("freemarker.template.Template")
-      FreeMarkerRender.init(servletContext, Locale.getDefault, constants.freeMarkerTemplateUpdateDelay)
+      FreeMarkerRender.init(servletContext, Locale.getDefault, constants.getFreeMarkerTemplateUpdateDelay)
     }
     catch {
-      case e: Exception => {
+      case e: ClassNotFoundException => {
       }
     }
   }
@@ -72,7 +128,7 @@ object RenderFactory {
       VelocityRender.init(servletContext)
     }
     catch {
-      case e: Nothing => {
+      case e: ClassNotFoundException => {
       }
     }
   }
@@ -81,12 +137,12 @@ object RenderFactory {
     try {
       Class.forName("javax.el.ELResolver")
       Class.forName("javax.servlet.jsp.JspFactory")
-      com.sfinal.plugin.activerecord.ModelRecordElResolver.init(servletContext)
+      com.jfinal.plugin.activerecord.ModelRecordElResolver.init(servletContext)
     }
     catch {
-      case e: Nothing => {
+      case e: ClassNotFoundException => {
       }
-      case e: Nothing => {
+      case e: Exception => {
       }
     }
   }
@@ -95,8 +151,8 @@ object RenderFactory {
     FileRender.init(getFileRenderPath, servletContext)
   }
 
-  private def getFileRenderPath: Nothing = {
-    var result: Nothing = constants.getFileRenderPath
+  private def getFileRenderPath: String = {
+    var result: String = constants.getFileRenderPath
     if (result == null) {
       result = PathKit.getWebRootPath + DEFAULT_FILE_RENDER_BASE_PATH
     }
@@ -109,19 +165,19 @@ object RenderFactory {
   /**
    * Return Render by default ViewType which config in JFinalConfig
    */
-  def getRender(view: Nothing): Render = {
-    return mainRenderFactory.render(view)
+  def getRender(view: String): Render = {
+    return mainRenderFactory.getRender(view)
   }
 
-  def getFreeMarkerRender(view: Nothing): Render = {
+  def getFreeMarkerRender(view: String): Render = {
     return new FreeMarkerRender(view)
   }
 
-  def getJspRender(view: Nothing): Render = {
+  def getJspRender(view: String): Render = {
     return new JspRender(view)
   }
 
-  def getVelocityRender(view: Nothing): Render = {
+  def getVelocityRender(view: String): Render = {
     return new VelocityRender(view)
   }
 
@@ -129,35 +185,35 @@ object RenderFactory {
     return new JsonRender
   }
 
-  def getJsonRender(key: Nothing, value: Nothing): Render = {
+  def getJsonRender(key: String, value: AnyRef): Render = {
     return new JsonRender(key, value)
   }
 
-  def getJsonRender(attrs: Array[Nothing]): Render = {
+  def getJsonRender(attrs: Array[String]): Render = {
     return new JsonRender(attrs)
   }
 
-  def getJsonRender(jsonText: Nothing): Render = {
+  def getJsonRender(jsonText: String): Render = {
     return new JsonRender(jsonText)
   }
 
-  def getJsonRender(`object`: Nothing): Render = {
+  def getJsonRender(`object`: AnyRef): Render = {
     return new JsonRender(`object`)
   }
 
-  def getTextRender(text: Nothing): Render = {
+  def getTextRender(text: String): Render = {
     return new TextRender(text)
   }
 
-  def getTextRender(text: Nothing, contentType: Nothing): Render = {
+  def getTextRender(text: String, contentType: String): Render = {
     return new TextRender(text, contentType)
   }
 
-  def getTextRender(text: Nothing, contentType: ContentType): Render = {
+  def getTextRender(text: String, contentType: ContentType): Render = {
     return new TextRender(text, contentType)
   }
 
-  def getDefaultRender(view: Nothing): Render = {
+  def getDefaultRender(view: String): Render = {
     val viewType: ViewType = constants.getViewType
     if (viewType eq ViewType.FREE_MARKER) {
       return new FreeMarkerRender(view + constants.getFreeMarkerViewExtension)
@@ -169,39 +225,39 @@ object RenderFactory {
       return new VelocityRender(view + constants.getVelocityViewExtension)
     }
     else {
-      return mainRenderFactory.render(view + mainRenderFactory.viewExtension)
+      return mainRenderFactory.getRender(view + mainRenderFactory.getViewExtension)
     }
   }
 
-  def getErrorRender(errorCode: Int, view: Nothing): Render = {
-    return errorRenderFactory.render(errorCode, view)
+  def getErrorRender(errorCode: Int, view: String): Render = {
+    return errorRenderFactory.getRender(errorCode, view)
   }
 
   def getErrorRender(errorCode: Int): Render = {
-    return errorRenderFactory.render(errorCode, constants.getErrorView(errorCode))
+    return errorRenderFactory.getRender(errorCode, constants.getErrorView(errorCode))
   }
 
-  def getFileRender(fileName: Nothing): Render = {
+  def getFileRender(fileName: String): Render = {
     return new FileRender(fileName)
   }
 
-  def getFileRender(file: Nothing): Render = {
+  def getFileRender(file: File): Render = {
     return new FileRender(file)
   }
 
-  def getRedirectRender(url: Nothing): Render = {
+  def getRedirectRender(url: String): Render = {
     return new RedirectRender(url)
   }
 
-  def getRedirectRender(url: Nothing, withQueryString: Boolean): Render = {
+  def getRedirectRender(url: String, withQueryString: Boolean): Render = {
     return new RedirectRender(url, withQueryString)
   }
 
-  def getRedirect301Render(url: Nothing): Render = {
+  def getRedirect301Render(url: String): Render = {
     return new Redirect301Render(url)
   }
 
-  def getRedirect301Render(url: Nothing, withQueryString: Boolean): Render = {
+  def getRedirect301Render(url: String, withQueryString: Boolean): Render = {
     return new Redirect301Render(url, withQueryString)
   }
 
@@ -209,52 +265,20 @@ object RenderFactory {
     return new NullRender
   }
 
-  def getJavascriptRender(jsText: Nothing): Render = {
+  def getJavascriptRender(jsText: String): Render = {
     return new JavascriptRender(jsText)
   }
 
-  def getHtmlRender(htmlText: Nothing): Render = {
+  def getHtmlRender(htmlText: String): Render = {
     return new HtmlRender(htmlText)
   }
 
-  def getXmlRender(view: Nothing): Render = {
+  def getXmlRender(view: String): Render = {
     return new XmlRender(view)
   }
 
-  private final class FreeMarkerRenderFactory extends IMainRenderFactory {
-    def render(view: Nothing): Render = {
-      return new FreeMarkerRender(view)
-    }
-
-    def viewExtension: Nothing = {
-      return ".html"
-    }
-  }
-
-  private final class JspRenderFactory extends IMainRenderFactory {
-    def render(view: Nothing): Render = {
-      return new JspRender(view)
-    }
-
-    def viewExtension: Nothing = {
-      return ".jsp"
-    }
-  }
-
-  private final class VelocityRenderFactory extends IMainRenderFactory {
-    def render(view: Nothing): Render = {
-      return new VelocityRender(view)
-    }
-
-    def viewExtension: Nothing = {
-      return ".html"
-    }
-  }
-
-  private final class ErrorRenderFactory extends IErrorRenderFactory {
-    def render(errorCode: Int, view: Nothing): Render = {
-      return new ErrorRender(errorCode, view)
-    }
-  }
-
+  private var constants: Constants = null
 }
+
+
+

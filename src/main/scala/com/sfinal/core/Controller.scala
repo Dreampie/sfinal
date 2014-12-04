@@ -1,25 +1,69 @@
+/**
+ * Copyright (c) 2011-2015, James Zhan 詹波 (jfinal@126.com).
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.sfinal.core
 
-import javax.servlet.http.{HttpServletResponse, HttpServletRequest}
+import java.io.File
+import java.text.ParseException
+import java.util.Date
+import java.util.Enumeration
+import java.util.List
+import java.util.Locale
+import java.util.Map
+import java.util.Map.Entry
+import javax.servlet.http.Cookie
+import javax.servlet.http.HttpServletRequest
+import javax.servlet.http.HttpServletResponse
+import javax.servlet.http.HttpSession
+import com.sfinal.core.Const.I18N_LOCALE
+import com.sfinal.core.{TypeConverter, ModelInjector}
+import com.sfinal.i18n.I18N
+import com.sfinal.i18n.I18N
+import com.sfinal.kit.StrKit
+import com.sfinal.kit.StrKit
+import com.sfinal.render.ContentType
+import com.sfinal.render.Render
+import com.sfinal.render.Render
+import com.sfinal.render.RenderFactory
+import com.sfinal.render.RenderFactory
+import com.sfinal.upload.MultipartRequest
+import com.sfinal.upload.MultipartRequest
+import com.sfinal.upload.UploadFile
+import com.sfinal.upload.UploadFile
 
 /**
- * Created by ice on 14-12-3.
+ * Controller
+ * <br>
+ * 昨夜西风凋碧树。独上高楼，望尽天涯路。<br>
+ * 衣带渐宽终不悔，为伊消得人憔悴。<br>
+ * 众里寻她千百度，蓦然回首，那人却在灯火阑珊处。
  */
-trait Controller {
-  private var request: HttpServletRequest = null
-  private var response: HttpServletResponse = null
-  private var urlPara: String = null
-  private var urlParaArray: Array[String] = null
-  private val NULL_URL_PARA_ARRAY: Array[String] = new Array[String](0)
-  private val URL_PARA_SEPARATOR: Nothing = Config.getConstants.getUrlParaSeparator
+@SuppressWarnings(Array("unchecked", "rawtypes")) object Controller {
+  private final val NULL_URL_PARA_ARRAY: Array[String] = new Array[String](0)
+  private final val URL_PARA_SEPARATOR: String = Config.getConstants.getUrlParaSeparator
+  private final val renderFactory: RenderFactory = RenderFactory.me
+}
 
-  private[core] def init(request: Nothing, response: Nothing, urlPara: Nothing) {
+@SuppressWarnings(Array("unchecked", "rawtypes")) abstract class Controller {
+  private[core] def init(request: HttpServletRequest, response: HttpServletResponse, urlPara: String) {
     this.request = request
     this.response = response
     this.urlPara = urlPara
   }
 
-  def setUrlPara(urlPara: Nothing) {
+  def setUrlPara(urlPara: String) {
     this.urlPara = urlPara
     this.urlParaArray = null
   }
@@ -29,7 +73,7 @@ trait Controller {
    * @param name a String specifying the name of the attribute
    * @param value the Object to be stored
    */
-  def setAttr(name: Nothing, value: Nothing): Controller = {
+  def setAttr(name: String, value: AnyRef): Controller = {
     request.setAttribute(name, value)
     return this
   }
@@ -38,7 +82,7 @@ trait Controller {
    * Removes an attribute from this request
    * @param name a String specifying the name of the attribute to remove
    */
-  def removeAttr(name: Nothing): Controller = {
+  def removeAttr(name: String): Controller = {
     request.removeAttribute(name)
     return this
   }
@@ -47,7 +91,7 @@ trait Controller {
    * Stores attributes in this request, key of the map as attribute name and value of the map as attribute value
    * @param attrMap key and value as attribute of the map to be stored
    */
-  def setAttrs(attrMap: Nothing): Controller = {
+  def setAttrs(attrMap: Map[String, AnyRef]): Controller = {
     import scala.collection.JavaConversions._
     for (entry <- attrMap.entrySet) request.setAttribute(entry.getKey, entry.getValue)
     return this
@@ -64,7 +108,7 @@ trait Controller {
    * @param name a String specifying the name of the parameter
    * @return a String representing the single value of the parameter
    */
-  def getPara(name: Nothing): Nothing = {
+  def getPara(name: String): String = {
     return request.getParameter(name)
   }
 
@@ -74,8 +118,8 @@ trait Controller {
    * @param defaultValue a String value be returned when the value of parameter is null
    * @return a String representing the single value of the parameter
    */
-  def getPara(name: Nothing, defaultValue: Nothing): Nothing = {
-    val result: Nothing = request.getParameter(name)
+  def getPara(name: String, defaultValue: String): String = {
+    val result: String = request.getParameter(name)
     return if (result != null && !("" == result)) result else defaultValue
   }
 
@@ -83,7 +127,7 @@ trait Controller {
    * Returns the values of the request parameters as a Map.
    * @return a Map contains all the parameters name and value
    */
-  def getParaMap: Nothing = {
+  def getParaMap: Map[String, Array[String]] = {
     return request.getParameterMap
   }
 
@@ -94,7 +138,7 @@ trait Controller {
    * @return an Enumeration of String objects, each String containing the name of
    *         a request parameter; or an empty Enumeration if the request has no parameters
    */
-  def getParaNames: Nothing = {
+  def getParaNames: Enumeration[String] = {
     return request.getParameterNames
   }
 
@@ -105,7 +149,7 @@ trait Controller {
    * @param name a String containing the name of the parameter whose value is requested
    * @return an array of String objects containing the parameter's values
    */
-  def getParaValues(name: Nothing): Array[Nothing] = {
+  def getParaValues(name: String): Array[String] = {
     return request.getParameterValues(name)
   }
 
@@ -116,10 +160,10 @@ trait Controller {
    * @param name a String containing the name of the parameter whose value is requested
    * @return an array of Integer objects containing the parameter's values
    */
-  def getParaValuesToInt(name: Nothing): Array[Nothing] = {
-    val values: Array[Nothing] = request.getParameterValues(name)
+  def getParaValuesToInt(name: String): Array[Integer] = {
+    val values: Array[String] = request.getParameterValues(name)
     if (values == null) return null
-    val result: Array[Nothing] = new Array[Nothing](values.length)
+    val result: Array[Integer] = new Array[Integer](values.length)
     {
       var i: Int = 0
       while (i < result.length) {
@@ -137,7 +181,7 @@ trait Controller {
    * This method returns an empty Enumeration if the request has no attributes available to it.
    * @return an Enumeration of strings containing the names of the request's attributes
    */
-  def getAttrNames: Nothing = {
+  def getAttrNames: Enumeration[String] = {
     return request.getAttributeNames
   }
 
@@ -146,7 +190,7 @@ trait Controller {
    * @param name a String specifying the name of the attribute
    * @return an Object containing the value of the attribute, or null if the attribute does not exist
    */
-  def getAttr[T](name: Nothing): T = {
+  def getAttr(name: String): T = {
     return request.getAttribute(name).asInstanceOf[T]
   }
 
@@ -155,8 +199,8 @@ trait Controller {
    * @param name a String specifying the name of the attribute
    * @return an String Object containing the value of the attribute, or null if the attribute does not exist
    */
-  def getAttrForStr(name: Nothing): Nothing = {
-    return request.getAttribute(name).asInstanceOf[Nothing]
+  def getAttrForStr(name: String): String = {
+    return request.getAttribute(name).asInstanceOf[String]
   }
 
   /**
@@ -164,11 +208,11 @@ trait Controller {
    * @param name a String specifying the name of the attribute
    * @return an Integer Object containing the value of the attribute, or null if the attribute does not exist
    */
-  def getAttrForInt(name: Nothing): Nothing = {
-    return request.getAttribute(name).asInstanceOf[Nothing]
+  def getAttrForInt(name: String): Integer = {
+    return request.getAttribute(name).asInstanceOf[Integer]
   }
 
-  private def toInt(value: Nothing, defaultValue: Nothing): Nothing = {
+  private def toInt(value: String, defaultValue: Integer): Integer = {
     if (value == null || ("" == value.trim)) return defaultValue
     if (value.startsWith("N") || value.startsWith("n")) return -Integer.parseInt(value.substring(1))
     return Integer.parseInt(value)
@@ -179,7 +223,7 @@ trait Controller {
    * @param name a String specifying the name of the parameter
    * @return a Integer representing the single value of the parameter
    */
-  def getParaToInt(name: Nothing): Nothing = {
+  def getParaToInt(name: String): Integer = {
     return toInt(request.getParameter(name), null)
   }
 
@@ -188,11 +232,11 @@ trait Controller {
    * @param name a String specifying the name of the parameter
    * @return a Integer representing the single value of the parameter
    */
-  def getParaToInt(name: Nothing, defaultValue: Nothing): Nothing = {
+  def getParaToInt(name: String, defaultValue: Integer): Integer = {
     return toInt(request.getParameter(name), defaultValue)
   }
 
-  private def toLong(value: Nothing, defaultValue: Nothing): Nothing = {
+  private def toLong(value: String, defaultValue: Long): Long = {
     if (value == null || ("" == value.trim)) return defaultValue
     if (value.startsWith("N") || value.startsWith("n")) return -Long.parseLong(value.substring(1))
     return Long.parseLong(value)
@@ -203,7 +247,7 @@ trait Controller {
    * @param name a String specifying the name of the parameter
    * @return a Integer representing the single value of the parameter
    */
-  def getParaToLong(name: Nothing): Nothing = {
+  def getParaToLong(name: String): Long = {
     return toLong(request.getParameter(name), null)
   }
 
@@ -212,16 +256,16 @@ trait Controller {
    * @param name a String specifying the name of the parameter
    * @return a Integer representing the single value of the parameter
    */
-  def getParaToLong(name: Nothing, defaultValue: Nothing): Nothing = {
+  def getParaToLong(name: String, defaultValue: Long): Long = {
     return toLong(request.getParameter(name), defaultValue)
   }
 
-  private def toBoolean(value: Nothing, defaultValue: Nothing): Nothing = {
+  private def toBoolean(value: String, defaultValue: Boolean): Boolean = {
     if (value == null || ("" == value.trim)) return defaultValue
     value = value.trim.toLowerCase
     if (("1" == value) || ("true" == value)) return Boolean.TRUE
     else if (("0" == value) || ("false" == value)) return Boolean.FALSE
-    throw new Nothing("Can not parse the parameter \"" + value + "\" to boolean value.")
+    throw new RuntimeException("Can not parse the parameter \"" + value + "\" to boolean value.")
   }
 
   /**
@@ -229,7 +273,7 @@ trait Controller {
    * @param name a String specifying the name of the parameter
    * @return true if the value of the parameter is "true" or "1", false if it is "false" or "0", null if parameter is not exists
    */
-  def getParaToBoolean(name: Nothing): Nothing = {
+  def getParaToBoolean(name: String): Boolean = {
     return toBoolean(request.getParameter(name), null)
   }
 
@@ -238,39 +282,39 @@ trait Controller {
    * @param name a String specifying the name of the parameter
    * @return true if the value of the parameter is "true" or "1", false if it is "false" or "0", default value if it is null
    */
-  def getParaToBoolean(name: Nothing, defaultValue: Nothing): Nothing = {
+  def getParaToBoolean(name: String, defaultValue: Boolean): Boolean = {
     return toBoolean(request.getParameter(name), defaultValue)
   }
 
   /**
    * Get all para from url and convert to Boolean
    */
-  def getParaToBoolean: Nothing = {
+  def getParaToBoolean: Boolean = {
     return toBoolean(getPara, null)
   }
 
   /**
    * Get para from url and conver to Boolean. The first index is 0
    */
-  def getParaToBoolean(index: Int): Nothing = {
+  def getParaToBoolean(index: Int): Boolean = {
     return toBoolean(getPara(index), null)
   }
 
   /**
    * Get para from url and conver to Boolean with default value if it is null.
    */
-  def getParaToBoolean(index: Int, defaultValue: Nothing): Nothing = {
+  def getParaToBoolean(index: Int, defaultValue: Boolean): Boolean = {
     return toBoolean(getPara(index), defaultValue)
   }
 
-  private def toDate(value: Nothing, defaultValue: Nothing): Nothing = {
+  private def toDate(value: String, defaultValue: Date): Date = {
     if (value == null || ("" == value.trim)) return defaultValue
     try {
-      return new Nothing("yyyy-MM-dd").parse(value)
+      return new SimpleDateFormat("yyyy-MM-dd").parse(value)
     }
     catch {
-      case e: Nothing => {
-        throw new Nothing(e)
+      case e: ParseException => {
+        throw new RuntimeException(e)
       }
     }
   }
@@ -280,7 +324,7 @@ trait Controller {
    * @param name a String specifying the name of the parameter
    * @return a Date representing the single value of the parameter
    */
-  def getParaToDate(name: Nothing): Nothing = {
+  def getParaToDate(name: String): Date = {
     return toDate(request.getParameter(name), null)
   }
 
@@ -289,35 +333,35 @@ trait Controller {
    * @param name a String specifying the name of the parameter
    * @return a Date representing the single value of the parameter
    */
-  def getParaToDate(name: Nothing, defaultValue: Nothing): Nothing = {
+  def getParaToDate(name: String, defaultValue: Date): Date = {
     return toDate(request.getParameter(name), defaultValue)
   }
 
   /**
    * Get all para from url and convert to Date
    */
-  def getParaToDate: Nothing = {
+  def getParaToDate: Date = {
     return toDate(getPara, null)
   }
 
   /**
    * Return HttpServletRequest. Do not use HttpServletRequest Object in constructor of Controller
    */
-  def getRequest: Nothing = {
+  def getRequest: HttpServletRequest = {
     return request
   }
 
   /**
    * Return HttpServletResponse. Do not use HttpServletResponse Object in constructor of Controller
    */
-  def getResponse: Nothing = {
+  def getResponse: HttpServletResponse = {
     return response
   }
 
   /**
    * Return HttpSession.
    */
-  def getSession: Nothing = {
+  def getSession: HttpSession = {
     return request.getSession
   }
 
@@ -325,7 +369,7 @@ trait Controller {
    * Return HttpSession.
    * @param create a boolean specifying create HttpSession if it not exists
    */
-  def getSession(create: Boolean): Nothing = {
+  def getSession(create: Boolean): HttpSession = {
     return request.getSession(create)
   }
 
@@ -333,8 +377,8 @@ trait Controller {
    * Return a Object from session.
    * @param key a String specifying the key of the Object stored in session
    */
-  def getSessionAttr[T](key: Nothing): T = {
-    val session: Nothing = request.getSession(false)
+  def getSessionAttr(key: String): T = {
+    val session: HttpSession = request.getSession(false)
     return if (session != null) session.getAttribute(key).asInstanceOf[T] else null
   }
 
@@ -343,7 +387,7 @@ trait Controller {
    * @param key a String specifying the key of the Object stored in session
    * @param value a Object specifying the value stored in session
    */
-  def setSessionAttr(key: Nothing, value: Nothing): Controller = {
+  def setSessionAttr(key: String, value: AnyRef): Controller = {
     request.getSession.setAttribute(key, value)
     return this
   }
@@ -352,8 +396,8 @@ trait Controller {
    * Remove Object in session.
    * @param key a String specifying the key of the Object stored in session
    */
-  def removeSessionAttr(key: Nothing): Controller = {
-    val session: Nothing = request.getSession(false)
+  def removeSessionAttr(key: String): Controller = {
+    val session: HttpSession = request.getSession(false)
     if (session != null) session.removeAttribute(key)
     return this
   }
@@ -361,55 +405,55 @@ trait Controller {
   /**
    * Get cookie value by cookie name.
    */
-  def getCookie(name: Nothing, defaultValue: Nothing): Nothing = {
-    val cookie: Nothing = getCookieObject(name)
+  def getCookie(name: String, defaultValue: String): String = {
+    val cookie: Cookie = getCookieObject(name)
     return if (cookie != null) cookie.getValue else defaultValue
   }
 
   /**
    * Get cookie value by cookie name.
    */
-  def getCookie(name: Nothing): Nothing = {
+  def getCookie(name: String): String = {
     return getCookie(name, null)
   }
 
   /**
    * Get cookie value by cookie name and convert to Integer.
    */
-  def getCookieToInt(name: Nothing): Nothing = {
-    val result: Nothing = getCookie(name)
+  def getCookieToInt(name: String): Integer = {
+    val result: String = getCookie(name)
     return if (result != null) Integer.parseInt(result) else null
   }
 
   /**
    * Get cookie value by cookie name and convert to Integer.
    */
-  def getCookieToInt(name: Nothing, defaultValue: Nothing): Nothing = {
-    val result: Nothing = getCookie(name)
+  def getCookieToInt(name: String, defaultValue: Integer): Integer = {
+    val result: String = getCookie(name)
     return if (result != null) Integer.parseInt(result) else defaultValue
   }
 
   /**
    * Get cookie value by cookie name and convert to Long.
    */
-  def getCookieToLong(name: Nothing): Nothing = {
-    val result: Nothing = getCookie(name)
+  def getCookieToLong(name: String): Long = {
+    val result: String = getCookie(name)
     return if (result != null) Long.parseLong(result) else null
   }
 
   /**
    * Get cookie value by cookie name and convert to Long.
    */
-  def getCookieToLong(name: Nothing, defaultValue: Nothing): Nothing = {
-    val result: Nothing = getCookie(name)
+  def getCookieToLong(name: String, defaultValue: Long): Long = {
+    val result: String = getCookie(name)
     return if (result != null) Long.parseLong(result) else defaultValue
   }
 
   /**
    * Get cookie object by cookie name.
    */
-  def getCookieObject(name: Nothing): Nothing = {
-    val cookies: Array[Nothing] = request.getCookies
+  def getCookieObject(name: String): Cookie = {
+    val cookies: Array[Cookie] = request.getCookies
     if (cookies != null) for (cookie <- cookies) if (cookie.getName == name) return cookie
     return null
   }
@@ -417,15 +461,15 @@ trait Controller {
   /**
    * Get all cookie objects.
    */
-  def getCookieObjects: Array[Nothing] = {
-    val result: Array[Nothing] = request.getCookies
-    return if (result != null) result else new Array[Nothing](0)
+  def getCookieObjects: Array[Cookie] = {
+    val result: Array[Cookie] = request.getCookies
+    return if (result != null) result else new Array[Cookie](0)
   }
 
   /**
    * Set Cookie to response.
    */
-  def setCookie(cookie: Nothing): Controller = {
+  def setCookie(cookie: Cookie): Controller = {
     response.addCookie(cookie)
     return this
   }
@@ -437,7 +481,7 @@ trait Controller {
    * @param maxAgeInSeconds -1: clear cookie when close browser. 0: clear cookie immediately.  n>0 : max age in n seconds.
    * @param path see Cookie.setPath(String)
    */
-  def setCookie(name: Nothing, value: Nothing, maxAgeInSeconds: Int, path: Nothing): Controller = {
+  def setCookie(name: String, value: String, maxAgeInSeconds: Int, path: String): Controller = {
     setCookie(name, value, maxAgeInSeconds, path, null)
     return this
   }
@@ -450,8 +494,8 @@ trait Controller {
    * @param path see Cookie.setPath(String)
    * @param domain the domain name within which this cookie is visible; form is according to RFC 2109
    */
-  def setCookie(name: Nothing, value: Nothing, maxAgeInSeconds: Int, path: Nothing, domain: Nothing): Controller = {
-    val cookie: Nothing = new Nothing(name, value)
+  def setCookie(name: String, value: String, maxAgeInSeconds: Int, path: String, domain: String): Controller = {
+    val cookie: Cookie = new Cookie(name, value)
     if (domain != null) cookie.setDomain(domain)
     cookie.setMaxAge(maxAgeInSeconds)
     cookie.setPath(path)
@@ -462,7 +506,7 @@ trait Controller {
   /**
    * Set Cookie with path = "/".
    */
-  def setCookie(name: Nothing, value: Nothing, maxAgeInSeconds: Int): Controller = {
+  def setCookie(name: String, value: String, maxAgeInSeconds: Int): Controller = {
     setCookie(name, value, maxAgeInSeconds, "/", null)
     return this
   }
@@ -470,7 +514,7 @@ trait Controller {
   /**
    * Remove Cookie with path = "/".
    */
-  def removeCookie(name: Nothing): Controller = {
+  def removeCookie(name: String): Controller = {
     setCookie(name, null, 0, "/", null)
     return this
   }
@@ -478,7 +522,7 @@ trait Controller {
   /**
    * Remove Cookie.
    */
-  def removeCookie(name: Nothing, path: Nothing): Controller = {
+  def removeCookie(name: String, path: String): Controller = {
     setCookie(name, null, 0, path, null)
     return this
   }
@@ -486,16 +530,15 @@ trait Controller {
   /**
    * Remove Cookie.
    */
-  def removeCookie(name: Nothing, path: Nothing, domain: Nothing): Controller = {
+  def removeCookie(name: String, path: String, domain: String): Controller = {
     setCookie(name, null, 0, path, domain)
     return this
   }
 
-  // --------
   /**
    * Get all para with separator char from url
    */
-  def getPara: Nothing = {
+  def getPara: String = {
     if ("" == urlPara) urlPara = null
     return urlPara
   }
@@ -503,7 +546,7 @@ trait Controller {
   /**
    * Get para from url. The index of first url para is 0.
    */
-  def getPara(index: Int): Nothing = {
+  def getPara(index: Int): String = {
     if (index < 0) return getPara
     if (urlParaArray == null) {
       if (urlPara == null || ("" == urlPara)) urlParaArray = NULL_URL_PARA_ARRAY
@@ -524,114 +567,112 @@ trait Controller {
   /**
    * Get para from url with default value if it is null or "".
    */
-  def getPara(index: Int, defaultValue: Nothing): Nothing = {
-    val result: Nothing = getPara(index)
+  def getPara(index: Int, defaultValue: String): String = {
+    val result: String = getPara(index)
     return if (result != null && !("" == result)) result else defaultValue
   }
 
   /**
    * Get para from url and conver to Integer. The first index is 0
    */
-  def getParaToInt(index: Int): Nothing = {
+  def getParaToInt(index: Int): Integer = {
     return toInt(getPara(index), null)
   }
 
   /**
    * Get para from url and conver to Integer with default value if it is null.
    */
-  def getParaToInt(index: Int, defaultValue: Nothing): Nothing = {
+  def getParaToInt(index: Int, defaultValue: Integer): Integer = {
     return toInt(getPara(index), defaultValue)
   }
 
   /**
    * Get para from url and conver to Long.
    */
-  def getParaToLong(index: Int): Nothing = {
+  def getParaToLong(index: Int): Long = {
     return toLong(getPara(index), null)
   }
 
   /**
    * Get para from url and conver to Long with default value if it is null.
    */
-  def getParaToLong(index: Int, defaultValue: Nothing): Nothing = {
+  def getParaToLong(index: Int, defaultValue: Long): Long = {
     return toLong(getPara(index), defaultValue)
   }
 
   /**
    * Get all para from url and convert to Integer
    */
-  def getParaToInt: Nothing = {
+  def getParaToInt: Integer = {
     return toInt(getPara, null)
   }
 
   /**
    * Get all para from url and convert to Long
    */
-  def getParaToLong: Nothing = {
+  def getParaToLong: Long = {
     return toLong(getPara, null)
   }
 
   /**
    * Get model from http request.
    */
-  def getModel[T](modelClass: Nothing): T = {
+  def getModel(modelClass: Class[T]): T = {
     return ModelInjector.inject(modelClass, request, false).asInstanceOf[T]
   }
 
   /**
    * Get model from http request.
    */
-  def getModel[T](modelClass: Nothing, modelName: Nothing): T = {
+  def getModel(modelClass: Class[T], modelName: String): T = {
     return ModelInjector.inject(modelClass, modelName, request, false).asInstanceOf[T]
   }
 
-  // TODO public <T> List<T> getModels(Class<T> modelClass, String modelName) {}
-  // --------
   /**
    * Get upload file from multipart request.
    */
-  def getFiles(saveDirectory: Nothing, maxPostSize: Nothing, encoding: Nothing): Nothing = {
+  def getFiles(saveDirectory: String, maxPostSize: Integer, encoding: String): List[UploadFile] = {
     if (request.isInstanceOf[MultipartRequest] == false) request = new MultipartRequest(request, saveDirectory, maxPostSize, encoding)
     return (request.asInstanceOf[MultipartRequest]).getFiles
   }
 
-  def getFile(parameterName: Nothing, saveDirectory: Nothing, maxPostSize: Nothing, encoding: Nothing): UploadFile = {
+  def getFile(parameterName: String, saveDirectory: String, maxPostSize: Integer, encoding: String): UploadFile = {
     getFiles(saveDirectory, maxPostSize, encoding)
     return getFile(parameterName)
   }
 
-  def getFiles(saveDirectory: Nothing, maxPostSize: Int): Nothing = {
+  def getFiles(saveDirectory: String, maxPostSize: Int): List[UploadFile] = {
     if (request.isInstanceOf[MultipartRequest] == false) request = new MultipartRequest(request, saveDirectory, maxPostSize)
     return (request.asInstanceOf[MultipartRequest]).getFiles
   }
 
-  def getFile(parameterName: Nothing, saveDirectory: Nothing, maxPostSize: Int): UploadFile = {
+  def getFile(parameterName: String, saveDirectory: String, maxPostSize: Int): UploadFile = {
     getFiles(saveDirectory, maxPostSize)
     return getFile(parameterName)
   }
 
-  def getFiles(saveDirectory: Nothing): Nothing = {
+  def getFiles(saveDirectory: String): List[UploadFile] = {
     if (request.isInstanceOf[MultipartRequest] == false) request = new MultipartRequest(request, saveDirectory)
     return (request.asInstanceOf[MultipartRequest]).getFiles
   }
 
-  def getFile(parameterName: Nothing, saveDirectory: Nothing): UploadFile = {
+  def getFile(parameterName: String, saveDirectory: String): UploadFile = {
     getFiles(saveDirectory)
     return getFile(parameterName)
   }
 
-  def getFiles: Nothing = {
+  def getFiles: List[UploadFile] = {
     if (request.isInstanceOf[MultipartRequest] == false) request = new MultipartRequest(request)
     return (request.asInstanceOf[MultipartRequest]).getFiles
   }
 
   def getFile: UploadFile = {
-    val uploadFiles: Nothing = getFiles
+    val uploadFiles: List[UploadFile] = getFiles
     return if (uploadFiles.size > 0) uploadFiles.get(0) else null
   }
 
-  def getFile(parameterName: Nothing): UploadFile = {
-    val uploadFiles: Nothing = getFiles
+  def getFile(parameterName: String): UploadFile = {
+    val uploadFiles: List[UploadFile] = getFiles
     import scala.collection.JavaConversions._
     for (uploadFile <- uploadFiles) {
       if (uploadFile.getParameterName == parameterName) {
@@ -641,35 +682,34 @@ trait Controller {
     return null
   }
 
-  // i18n features --------
   /**
    * Write Local to cookie
    */
-  def setLocaleToCookie(locale: Nothing): Controller = {
+  def setLocaleToCookie(locale: Locale): Controller = {
     setCookie(I18N_LOCALE, locale.toString, I18N.getI18nMaxAgeOfCookie)
     return this
   }
 
-  def setLocaleToCookie(locale: Nothing, maxAge: Int): Controller = {
+  def setLocaleToCookie(locale: Locale, maxAge: Int): Controller = {
     setCookie(I18N_LOCALE, locale.toString, maxAge)
     return this
   }
 
-  def getText(key: Nothing): Nothing = {
+  def getText(key: String): String = {
     return I18N.getText(key, getLocaleFromCookie)
   }
 
-  def getText(key: Nothing, defaultValue: Nothing): Nothing = {
+  def getText(key: String, defaultValue: String): String = {
     return I18N.getText(key, defaultValue, getLocaleFromCookie)
   }
 
-  private def getLocaleFromCookie: Nothing = {
-    val cookie: Nothing = getCookieObject(I18N_LOCALE)
+  private def getLocaleFromCookie: Locale = {
+    val cookie: Cookie = getCookieObject(I18N_LOCALE)
     if (cookie != null) {
       return I18N.localeFromString(cookie.getValue)
     }
     else {
-      val defaultLocale: Nothing = I18N.getDefaultLocale
+      val defaultLocale: Locale = I18N.getDefaultLocale
       setLocaleToCookie(defaultLocale)
       return I18N.localeFromString(defaultLocale.toString)
     }
@@ -679,10 +719,10 @@ trait Controller {
    * Keep all parameter's value except model value
    */
   def keepPara: Controller = {
-    val map: Nothing = request.getParameterMap
+    val map: Map[String, Array[String]] = request.getParameterMap
     import scala.collection.JavaConversions._
     for (e <- map.entrySet) {
-      val values: Array[Nothing] = e.getValue
+      val values: Array[String] = e.getValue
       if (values.length == 1) request.setAttribute(e.getKey, values(0))
       else request.setAttribute(e.getKey, values)
     }
@@ -692,9 +732,9 @@ trait Controller {
   /**
    * Keep parameter's value names pointed, model value can not be kept
    */
-  def keepPara(names: Nothing*): Controller = {
+  def keepPara(names: String*): Controller = {
     for (name <- names) {
-      val values: Array[Nothing] = request.getParameterValues(name)
+      val values: Array[String] = request.getParameterValues(name)
       if (values != null) {
         if (values.length == 1) request.setAttribute(name, values(0))
         else request.setAttribute(name, values)
@@ -706,14 +746,14 @@ trait Controller {
   /**
    * Convert para to special type and keep it
    */
-  def keepPara(`type`: Nothing, name: Nothing): Controller = {
-    val values: Array[Nothing] = request.getParameterValues(name)
+  def keepPara(`type`: Class[_], name: String): Controller = {
+    val values: Array[String] = request.getParameterValues(name)
     if (values != null) {
       if (values.length == 1) try {
         request.setAttribute(name, TypeConverter.convert(`type`, values(0)))
       }
       catch {
-        case e: Nothing => {
+        case e: ParseException => {
         }
       }
       else request.setAttribute(name, values)
@@ -721,20 +761,20 @@ trait Controller {
     return this
   }
 
-  def keepPara(`type`: Nothing, names: Nothing*): Controller = {
-    if (`type` eq classOf[Nothing]) return keepPara(names)
+  def keepPara(`type`: Class[_], names: String*): Controller = {
+    if (`type` eq classOf[String]) return keepPara(names)
     if (names != null) for (name <- names) keepPara(`type`, name)
     return this
   }
 
-  def keepModel(modelClass: Nothing, modelName: Nothing): Controller = {
-    val model: Nothing = ModelInjector.inject(modelClass, modelName, request, true)
+  def keepModel(modelClass: Class[_], modelName: String): Controller = {
+    val model: AnyRef = ModelInjector.inject(modelClass, modelName, request, true)
     request.setAttribute(modelName, model)
     return this
   }
 
-  def keepModel(modelClass: Nothing): Controller = {
-    val modelName: Nothing = StrKit.firstCharToLowerCase(modelClass.getSimpleName)
+  def keepModel(modelClass: Class[_]): Controller = {
+    val modelName: String = StrKit.firstCharToLowerCase(modelClass.getSimpleName)
     keepModel(modelClass, modelName)
     return this
   }
@@ -744,7 +784,7 @@ trait Controller {
    * @param tokenName the token name used in view
    * @param secondsOfTimeOut the seconds of time out, secondsOfTimeOut >= Const.MIN_SECONDS_OF_TOKEN_TIME_OUT
    */
-  def createToken(tokenName: Nothing, secondsOfTimeOut: Int) {
+  def createToken(tokenName: String, secondsOfTimeOut: Int) {
     com.jfinal.token.TokenManager.createToken(this, tokenName, secondsOfTimeOut)
   }
 
@@ -759,7 +799,7 @@ trait Controller {
    * Create a token with default seconds of time out.
    * @param tokenName the token name used in view
    */
-  def createToken(tokenName: Nothing) {
+  def createToken(tokenName: String) {
     createToken(tokenName, Const.DEFAULT_SECONDS_OF_TOKEN_TIME_OUT)
   }
 
@@ -768,7 +808,7 @@ trait Controller {
    * @param tokenName the token name used in view's form
    * @return true if token is correct
    */
-  def validateToken(tokenName: Nothing): Boolean = {
+  def validateToken(tokenName: String): Boolean = {
     return com.jfinal.token.TokenManager.validateToken(this, tokenName)
   }
 
@@ -783,23 +823,23 @@ trait Controller {
   /**
    * Return true if the para value is blank otherwise return false
    */
-  def isParaBlank(paraName: Nothing): Boolean = {
-    val value: Nothing = request.getParameter(paraName)
-    return value == null || value.trim.length eq 0
+  def isParaBlank(paraName: String): Boolean = {
+    val value: String = request.getParameter(paraName)
+    return value == null || value.trim.length == 0
   }
 
   /**
    * Return true if the urlPara value is blank otherwise return false
    */
   def isParaBlank(index: Int): Boolean = {
-    val value: Nothing = getPara(index)
-    return value == null || value.trim.length eq 0
+    val value: String = getPara(index)
+    return value == null || value.trim.length == 0
   }
 
   /**
    * Return true if the para exists otherwise return false
    */
-  def isParaExists(paraName: Nothing): Boolean = {
+  def isParaExists(paraName: String): Boolean = {
     return request.getParameterMap.containsKey(paraName)
   }
 
@@ -809,12 +849,6 @@ trait Controller {
   def isParaExists(index: Int): Boolean = {
     return getPara(index) != null
   }
-
-  private val renderFactory: RenderFactory = RenderFactory.me
-  /**
-   * Hold Render object when invoke renderXxx(...)
-   */
-  private var render: Render = null
 
   def getRender: Render = {
     return render
@@ -830,28 +864,28 @@ trait Controller {
   /**
    * Render with view use default type Render configured in JFinalConfig
    */
-  def render(view: Nothing) {
+  def render(view: String) {
     render = renderFactory.getRender(view)
   }
 
   /**
    * Render with jsp view
    */
-  def renderJsp(view: Nothing) {
+  def renderJsp(view: String) {
     render = renderFactory.getJspRender(view)
   }
 
   /**
    * Render with freemarker view
    */
-  def renderFreeMarker(view: Nothing) {
+  def renderFreeMarker(view: String) {
     render = renderFactory.getFreeMarkerRender(view)
   }
 
   /**
    * Render with velocity view
    */
-  def renderVelocity(view: Nothing) {
+  def renderVelocity(view: String) {
     render = renderFactory.getVelocityRender(view)
   }
 
@@ -862,7 +896,7 @@ trait Controller {
    * renderJson("message", "Save successful");<br>
    * renderJson("users", users);<br>
    */
-  def renderJson(key: Nothing, value: Nothing) {
+  def renderJson(key: String, value: AnyRef) {
     render = renderFactory.getJsonRender(key, value)
   }
 
@@ -878,7 +912,7 @@ trait Controller {
    * <p>
    * Example: renderJson(new String[]{"blogList", "user"});
    */
-  def renderJson(attrs: Array[Nothing]) {
+  def renderJson(attrs: Array[String]) {
     render = renderFactory.getJsonRender(attrs)
   }
 
@@ -887,7 +921,7 @@ trait Controller {
    * <p>
    * Example: renderJson("{\"message\":\"Please input password!\"}");
    */
-  def renderJson(jsonText: Nothing) {
+  def renderJson(jsonText: String) {
     render = renderFactory.getJsonRender(jsonText)
   }
 
@@ -896,14 +930,14 @@ trait Controller {
    * <p>
    * Example: renderJson(new User().set("name", "JFinal").set("age", 18));
    */
-  def renderJson(`object`: Nothing) {
+  def renderJson(`object`: AnyRef) {
     render = renderFactory.getJsonRender(`object`)
   }
 
   /**
    * Render with text. The contentType is: "text/plain".
    */
-  def renderText(text: Nothing) {
+  def renderText(text: String) {
     render = renderFactory.getTextRender(text)
   }
 
@@ -912,7 +946,7 @@ trait Controller {
    * <p>
    * Example: renderText("&lt;user id='5888'&gt;James&lt;/user&gt;", "application/xml");
    */
-  def renderText(text: Nothing, contentType: Nothing) {
+  def renderText(text: String, contentType: String) {
     render = renderFactory.getTextRender(text, contentType)
   }
 
@@ -921,49 +955,49 @@ trait Controller {
    * <p>
    * Example: renderText("&lt;html&gt;Hello James&lt;/html&gt;", ContentType.HTML);
    */
-  def renderText(text: Nothing, contentType: ContentType) {
+  def renderText(text: String, contentType: ContentType) {
     render = renderFactory.getTextRender(text, contentType)
   }
 
   /**
    * Forward to an action
    */
-  def forwardAction(actionUrl: Nothing) {
+  def forwardAction(actionUrl: String) {
     render = new ActionRender(actionUrl)
   }
 
   /**
    * Render with file
    */
-  def renderFile(fileName: Nothing) {
+  def renderFile(fileName: String) {
     render = renderFactory.getFileRender(fileName)
   }
 
   /**
    * Render with file
    */
-  def renderFile(file: Nothing) {
+  def renderFile(file: File) {
     render = renderFactory.getFileRender(file)
   }
 
   /**
    * Redirect to url
    */
-  def redirect(url: Nothing) {
+  def redirect(url: String) {
     render = renderFactory.getRedirectRender(url)
   }
 
   /**
    * Redirect to url
    */
-  def redirect(url: Nothing, withQueryString: Boolean) {
+  def redirect(url: String, withQueryString: Boolean) {
     render = renderFactory.getRedirectRender(url, withQueryString)
   }
 
   /**
    * Render with view and status use default type Render configured in JFinalConfig
    */
-  def render(view: Nothing, status: Int) {
+  def render(view: String, status: Int) {
     render = renderFactory.getRender(view)
     response.setStatus(status)
   }
@@ -971,21 +1005,21 @@ trait Controller {
   /**
    * Render with url and 301 status
    */
-  def redirect301(url: Nothing) {
+  def redirect301(url: String) {
     render = renderFactory.getRedirect301Render(url)
   }
 
   /**
    * Render with url and 301 status
    */
-  def redirect301(url: Nothing, withQueryString: Boolean) {
+  def redirect301(url: String, withQueryString: Boolean) {
     render = renderFactory.getRedirect301Render(url, withQueryString)
   }
 
   /**
    * Render with view and errorCode status
    */
-  def renderError(errorCode: Int, view: Nothing) {
+  def renderError(errorCode: Int, view: String) {
     throw new ActionException(errorCode, renderFactory.getErrorRender(errorCode, view))
   }
 
@@ -1013,21 +1047,33 @@ trait Controller {
   /**
    * Render with javascript text. The contentType is: "text/javascript".
    */
-  def renderJavascript(javascriptText: Nothing) {
+  def renderJavascript(javascriptText: String) {
     render = renderFactory.getJavascriptRender(javascriptText)
   }
 
   /**
    * Render with html text. The contentType is: "text/html".
    */
-  def renderHtml(htmlText: Nothing) {
+  def renderHtml(htmlText: String) {
     render = renderFactory.getHtmlRender(htmlText)
   }
 
   /**
    * Render with xml view using freemarker.
    */
-  def renderXml(view: Nothing) {
+  def renderXml(view: String) {
     render = renderFactory.getXmlRender(view)
   }
+
+  private var request: HttpServletRequest = null
+  private var response: HttpServletResponse = null
+  private var urlPara: String = null
+  private var urlParaArray: Array[String] = null
+  /**
+   * Hold Render object when invoke renderXxx(...)
+   */
+  private var render: Render = null
 }
+
+
+
