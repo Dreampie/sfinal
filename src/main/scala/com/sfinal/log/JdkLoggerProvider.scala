@@ -6,7 +6,7 @@ import java.util.logging.Level
 /**
  * Created by ice on 14-12-3.
  */
-class JdkLoggerProvider extends LoggerProvider {
+object JdkLoggerProvider extends LoggerProvider {
   def logger(clazz: Class[_]): Logger = {
     JdkLogger.logger(clazz)
   }

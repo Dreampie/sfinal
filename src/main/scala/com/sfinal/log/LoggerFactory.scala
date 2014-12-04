@@ -7,10 +7,10 @@ object LoggerFactory {
   private var loggerProviderPrivate: LoggerProvider = {
     try {
       Class.forName("org.slf4j.Logger")
-      new Slf4jLoggerProvider
+      Slf4jLoggerProvider
     } catch {
       case ex: ClassNotFoundException => {
-        new JdkLoggerProvider
+        JdkLoggerProvider
       }
     }
   }

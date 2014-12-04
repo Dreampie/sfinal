@@ -5,7 +5,7 @@ import org.slf4j
 /**
  * Created by ice on 14-12-3.
  */
-class Slf4jLoggerProvider extends LoggerProvider {
+object Slf4jLoggerProvider extends LoggerProvider {
   def logger(clazz: Class[_]): Logger = {
     Slf4jLogger.logger(clazz)
   }
