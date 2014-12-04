@@ -1,0 +1,101 @@
+package com.sfinal.log
+
+import java.util._
+import java.util.logging.Level
+
+/**
+ * Created by ice on 14-12-3.
+ */
+class JdkLoggerProvider extends LoggerProvider {
+  def logger(clazz: Class[_]): Logger = {
+    new JdkLogger(clazz)
+  }
+
+  def logger(name: String): Logger = {
+    new JdkLogger(name)
+  }
+}
+
+class JdkLogger private extends Logger {
+  private var log: logging.Logger = null
+  private var clazzName: String = null
+
+  def this(clazz: Class[_]) {
+    this()
+    clazzName = clazz.getName
+    log = logging.Logger.getLogger(clazzName)
+  }
+
+  def this(name: String) {
+    this()
+    clazzName = name
+    log = logging.Logger.getLogger(clazzName)
+  }
+
+  def debug(message: String) {
+    log.logp(Level.FINE, clazzName, Thread.currentThread.getStackTrace()(1).getMethodName, message)
+  }
+
+  def debug(message: String, t: Throwable) {
+    log.logp(Level.FINE, clazzName, Thread.currentThread.getStackTrace()(1).getMethodName, message, t)
+  }
+
+  def info(message: String) {
+    log.logp(Level.INFO, clazzName, Thread.currentThread.getStackTrace()(1).getMethodName, message)
+  }
+
+  def info(message: String, t: Throwable) {
+    log.logp(Level.INFO, clazzName, Thread.currentThread.getStackTrace()(1).getMethodName, message, t)
+  }
+
+  def warn(message: String) {
+    log.logp(Level.WARNING, clazzName, Thread.currentThread.getStackTrace()(1).getMethodName, message)
+  }
+
+  def warn(message: String, t: Throwable) {
+    log.logp(Level.WARNING, clazzName, Thread.currentThread.getStackTrace()(1).getMethodName, message, t)
+  }
+
+  def error(message: String) {
+    log.logp(Level.SEVERE, clazzName, Thread.currentThread.getStackTrace()(1).getMethodName, message)
+  }
+
+  def error(message: String, t: Throwable) {
+    log.logp(Level.SEVERE, clazzName, Thread.currentThread.getStackTrace()(1).getMethodName, message, t)
+  }
+
+  /**
+   * JdkLogger fatal is the same as the error.
+   */
+  def fatal(message: String) {
+    log.logp(Level.SEVERE, clazzName, Thread.currentThread.getStackTrace()(1).getMethodName, message)
+  }
+
+  /**
+   * JdkLogger fatal is the same as the error.
+   */
+  def fatal(message: String, t: Throwable) {
+    log.logp(Level.SEVERE, clazzName, Thread.currentThread.getStackTrace()(1).getMethodName, message, t)
+  }
+
+  def isDebugEnabled: Boolean = {
+    return log.isLoggable(Level.FINE)
+  }
+
+  def isInfoEnabled: Boolean = {
+    return log.isLoggable(Level.INFO)
+  }
+
+  def isWarnEnabled: Boolean = {
+    return log.isLoggable(Level.WARNING)
+  }
+
+  def isErrorEnabled: Boolean = {
+    return log.isLoggable(Level.SEVERE)
+  }
+
+  def isFatalEnabled: Boolean = {
+    return log.isLoggable(Level.SEVERE)
+  }
+}
+
