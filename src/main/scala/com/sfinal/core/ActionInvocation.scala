@@ -52,8 +52,6 @@ class ActionInvocation protected {
     }
     catch {
       case e: InvocationTargetException => {
-        val cause: Throwable = e.getTargetException
-        if (cause.isInstanceOf[RuntimeException]) throw cause.asInstanceOf[RuntimeException]
         throw new RuntimeException(e)
       }
       case e: RuntimeException => {

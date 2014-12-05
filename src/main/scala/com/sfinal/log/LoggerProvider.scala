@@ -21,7 +21,39 @@ trait LoggerProvider {
  * 4. ERROR
  * 5. FATAL (the most serious)
  */
+
+object Logger {
+  private var loggerProviderPrivate: LoggerProvider = {
+    try {
+      Class.forName("org.slf4j.Logger")
+      Slf4jLoggerProvider
+    } catch {
+      case ex: ClassNotFoundException => {
+        JdkLoggerProvider
+      }
+    }
+  }
+
+  def loggerProvider: LoggerProvider = {
+    loggerProviderPrivate
+  }
+
+  def loggerProvider_=(loggerProvider: LoggerProvider) {
+    loggerProviderPrivate = loggerProvider
+  }
+
+  def logger(clazz: Class[_]): Logger = {
+    loggerProviderPrivate.logger(clazz)
+  }
+
+  def logger(name: String): Logger = {
+    loggerProviderPrivate.logger(name)
+  }
+
+}
+
 trait Logger {
+
   def debug(message: String)
 
   def debug(message: String, t: Throwable)

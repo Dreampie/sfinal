@@ -24,10 +24,4 @@ import java.lang.annotation.Target
 /**
  * ActionKey is used to configure actionKey for method of controller.
  */
-@Inherited
-@Retention(RetentionPolicy.RUNTIME)
-@Target(Array(ElementType.METHOD)) abstract trait ActionKey {
-  def value: String
-}
-
-
+class ActionKey(value:String) extends scala.annotation.Annotation with scala.annotation.StaticAnnotation

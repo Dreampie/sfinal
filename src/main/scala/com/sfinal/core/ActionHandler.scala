@@ -21,7 +21,7 @@ import com.sfinal.config.Constants
 import com.sfinal.core._
 import com.sfinal.handler.Handler
 import com.sfinal.handler.Handler
-import com.sfinal.log.{LoggerFactory, Logger}
+import com.sfinal.log.Logger
 import com.sfinal.render.Render
 import com.sfinal.render.Render
 import com.sfinal.render.RenderException
@@ -33,7 +33,7 @@ import com.sfinal.render.RenderFactory
  */
 object ActionHandler {
   private val renderFactory: RenderFactory = RenderFactory.me
-  private val log: Logger = LoggerFactory.logger(classOf[ActionHandler])
+  private val log: Logger = Logger.logger(classOf[ActionHandler])
 }
 
 class ActionHandler extends Handler {
@@ -81,11 +81,13 @@ class ActionHandler extends Handler {
         new ActionInvocation(action, controller).invoke
       }
       var render: Render = controller.getRender
-      if (render.isInstanceOf[ActionRender]) {
-        val actionUrl: String = (render.asInstanceOf[ActionRender]).getActionUrl
-        if (target == actionUrl) throw new RuntimeException("The forward action url is the same as before.")
-        else handle(actionUrl, request, response, isHandled)
-        return
+      render match {
+        case actionRender: ActionRender =>
+          val actionUrl: String = actionRender.getActionUrl
+          if (target == actionUrl) throw new RuntimeException("The forward action url is the same as before.")
+          else handle(actionUrl, request, response, isHandled)
+          return
+        case _ =>
       }
       if (render == null) render = renderFactory.getDefaultRender(action.getViewPath + action.getMethodName)
       render.setContext(request, response, action.getViewPath).render

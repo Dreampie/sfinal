@@ -6,6 +6,7 @@ import org.slf4j
  * Created by ice on 14-12-3.
  */
 object Slf4jLoggerProvider extends LoggerProvider {
+  private var log: slf4j.Logger = null
   def logger(clazz: Class[_]): Logger = {
     Slf4jLogger.logger(clazz)
   }
@@ -16,7 +17,6 @@ object Slf4jLoggerProvider extends LoggerProvider {
 }
 
 object Slf4jLogger extends Logger {
-  private var log: slf4j.Logger = null
 
   def logger(clazz: Class[_]): Logger = {
     log = slf4j.LoggerFactory.getLogger(clazz)

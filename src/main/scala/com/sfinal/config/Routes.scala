@@ -23,6 +23,9 @@ import scala.collection.immutable.HashMap
  * Routes.
  */
 object Routes {
+
+  private var baseViewPath: String = null
+
   /**
    * Set the base path for all views
    */
@@ -32,32 +35,31 @@ object Routes {
     if ("" == baseViewPathVar) throw new IllegalArgumentException("The baseViewPath can not be blank")
     if (!baseViewPathVar.startsWith("/")) baseViewPathVar = "/" + baseViewPathVar
     if (baseViewPathVar.endsWith("/")) baseViewPathVar = baseViewPathVar.substring(0, baseViewPathVar.length - 1)
-    Routes.baseViewPath = baseViewPathVar
+    this.baseViewPath = baseViewPathVar
   }
-
-  private var baseViewPath: String = null
 }
 
 abstract class Routes {
 
-  private final var map: Map[String, Class[_ <: Controller]] = new HashMap[String, Class[_ <: Controller]]
+  private final var controllerKeyMapPrv: Map[String, Class[_ <: Controller]] = new HashMap[String, Class[_ <: Controller]]
   private final var viewPathMap: Map[String, String] = new HashMap[String, String]
+
   /**
-    * you must implement config method and use add method to config route
+   * you must implement config method and use add method to config route
    */
   def config
 
   def add(routes: Routes): Routes = {
     if (routes != null) {
       routes.config
-      map ++= routes.map
+      controllerKeyMapPrv ++= routes.controllerKeyMapPrv
       viewPathMap ++= routes.viewPathMap
     }
     this
   }
 
   /**
-    * Add route
+   * Add route
    * @param controllerKey A key can find controller
    * @param controllerClass Controller Class
    * @param viewPath View path for this Controller
@@ -68,8 +70,8 @@ abstract class Routes {
     if ("" == controllerKeyVar) throw new IllegalArgumentException("The controllerKey can not be blank")
     if (controllerClass == null) throw new IllegalArgumentException("The controllerClass can not be null")
     if (!controllerKeyVar.startsWith("/")) controllerKeyVar = "/" + controllerKeyVar
-    if (map.contains(controllerKeyVar)) throw new IllegalArgumentException("The controllerKey already exists: " + controllerKeyVar)
-    map += ((controllerKeyVar, controllerClass))
+    if (controllerKeyMapPrv.contains(controllerKeyVar)) throw new IllegalArgumentException("The controllerKey already exists: " + controllerKeyVar)
+    controllerKeyMapPrv += ((controllerKeyVar, controllerClass))
 
     var viewPathVar = if (viewPath == null || ("" == viewPath.trim)) controllerKeyVar else viewPath.trim
     if (!viewPathVar.startsWith("/")) viewPathVar = "/" + viewPathVar
@@ -80,7 +82,7 @@ abstract class Routes {
   }
 
   /**
-    * Add url mapping to controller. The view path is controllerKey
+   * Add url mapping to controller. The view path is controllerKey
    * @param controllerkey A key can find controller
    * @param controllerClass Controller Class
    */
@@ -88,8 +90,8 @@ abstract class Routes {
     add(controllerkey, controllerClass, controllerkey)
   }
 
-  def getEntrySet: Iterable[Class[_ <: Controller]] = {
-    map.values
+  def controllerKeyMap: Map[String, Class[_ <: Controller]] = {
+    controllerKeyMapPrv
   }
 
   def getViewPath(key: String): Option[String] = {
